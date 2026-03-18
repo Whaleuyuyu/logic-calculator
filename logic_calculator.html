@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逻辑计算器 - 短板阈值计算</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        .input-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e8f4f8;
+            border-radius: 6px;
+        }
+        .result-item {
+            margin-bottom: 15px;
+        }
+        .result-label {
+            font-weight: bold;
+            color: #34495e;
+        }
+        .result-value {
+            margin-left: 10px;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        .formula {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>逻辑计算器 - 短板阈值计算</h1>
+        
+        <div class="input-section">
+            <h2>输入参数</h2>
+            <div class="input-group">
+                <label for="n">参与排名师傅数 (N):</label>
+                <input type="number" id="n" min="1" step="1" placeholder="请输入正整数">
+            </div>
+            <div class="input-group">
+                <label for="p">晋级目标比例 (P):</label>
+                <input type="number" id="p" min="0" max="1" step="0.01" placeholder="请输入0-1之间的小数">
+            </div>
+            <div class="input-group">
+                <label for="d">考核维度数（d）:</label>
+                <input type="number" id="d" min="1" step="1" value="5" placeholder="请输入正整数">
+            </div>
+            <div class="input-group">
+                <label for="rho">相关性系数ρ:</label>
+                <input type="number" id="rho" min="0" max="1" step="0.01" value="0.5" placeholder="请输入0-1之间的小数">
+            </div>
+            <button id="calculateBtn">计算短板阈值</button>
+            <button id="generateDataBtn" style="margin-top: 10px; background-color: #27ae60;">生成模拟数据</button>
+        </div>
+        
+        <div class="result-section" id="resultSection" style="display: none;">
+            <h2>计算结果</h2>
+            <div class="result-item">
+                <span class="result-label">参与排名师傅数 (N):</span>
+                <span class="result-value" id="resultN"></span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">晋级目标比例 (P):</span>
+                <span class="result-value" id="resultP"></span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">考核维度数（d）:</span>
+                <span class="result-value" id="resultD"></span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">短板阈值（T）:</span>
+                <span class="result-value" id="resultT"></span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">独立假设晋级分数线:</span>
+                <span class="result-value" id="maxDriverRank"></span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">正相关假设晋级分数线:</span>
+                <span class="result-value" id="minDriverRank"></span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">相关性系数晋级分数线:</span>
+                <span class="result-value" id="rhoDriverRank"></span>
+            </div>
+            <div class="formula">
+                <strong>计算过程:</strong><br>
+                1. 假设各维度独立，师傅短板值超过t的概率为(1-t)^d（d为考核维度数）<br>
+                2. 要使前P比例的师傅满足m≥T，则有(1-T)^d=P，解得：T = 1 - P^(1/d)<br>
+                3. 假设各维度完全正相关，短板值等于每个维度的百分位，此时T = P<br>
+                4. 引入相关性系数ρ（0≤ρ≤1），通过线性插值计算每个维度需要取的前比例q：q = (1-ρ)·P^(1/d) + ρ·P<br>
+                5. 相关性系数下的短板阈值：T = 1 - q<br>
+                6. 独立假设晋级分数线排名 = P^(1/d) * N<br>
+                7. 正相关假设晋级分数线排名 = P * N<br>
+                8. 相关性系数晋级分数线排名 = q * N<br>
+            </div>
+            
+            <div class="case-table">
+                <h3>案例数据表</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">晋级比例</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">短板阈值 (独立假设)</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">短板阈值 (正相关假设)</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">短板阈值 (相关性系数)</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">独立假设晋级分数线</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">正相关假设晋级分数线</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">相关性系数晋级分数线</th>
+                        </tr>
+                    </thead>
+                    <tbody id="caseTableBody">
+                        <!-- 案例数据将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('calculateBtn').addEventListener('click', function() {
+            const n = parseInt(document.getElementById('n').value);
+            const p = parseFloat(document.getElementById('p').value);
+            const d = parseInt(document.getElementById('d').value);
+            const rho = parseFloat(document.getElementById('rho').value);
+            
+            if (isNaN(n) || n < 1) {
+                alert('请输入有效的参与排名师傅数');
+                return;
+            }
+            
+            if (isNaN(p) || p < 0 || p > 1) {
+                alert('请输入有效的晋级目标比例 (0-1之间)');
+                return;
+            }
+            
+            if (isNaN(d) || d < 1) {
+                alert('请输入有效的考核维度数');
+                return;
+            }
+            
+            if (isNaN(rho) || rho < 0 || rho > 1) {
+                alert('请输入有效的相关性系数 (0-1之间)');
+                return;
+            }
+            
+            // 计算短板阈值 T（基于维度独立）
+            const T_independent = d === 1 ? p : 1 - Math.pow(p, 1/d);
+            
+            // 计算短板阈值 T（基于维度完全正相关）
+            const T_correlated = p;
+            
+            // 计算相关性系数下的比例q
+            const q = (1 - rho) * Math.pow(p, 1/d) + rho * p;
+            // 计算相关性系数下的短板阈值
+            const T_rho = 1 - q;
+            
+            // 计算独立假设晋级分数线排名
+            const maxDriverRank = Math.ceil((d === 1 ? p : Math.pow(p, 1/d)) * n);
+            
+            // 计算正相关假设晋级分数线排名
+            const minDriverRank = Math.ceil(p * n);
+            
+            // 计算相关性系数晋级分数线排名
+            const rhoDriverRank = Math.ceil(q * n);
+            
+            // 显示结果
+            document.getElementById('resultN').textContent = n;
+            document.getElementById('resultP').textContent = (p * 100).toFixed(2) + '%';
+            document.getElementById('resultD').textContent = d;
+            document.getElementById('resultT').textContent = T_independent.toFixed(4) + ' (独立假设) / ' + T_correlated.toFixed(4) + ' (正相关假设) / ' + T_rho.toFixed(4) + ' (相关性系数ρ=' + rho.toFixed(2) + ')';
+            document.getElementById('maxDriverRank').textContent = `取分数从高到低的第${maxDriverRank}名的师傅分数作为晋级分数`;
+            document.getElementById('minDriverRank').textContent = `取分数从高到低的第${minDriverRank}名的师傅分数作为晋级分数`;
+            document.getElementById('rhoDriverRank').textContent = `取分数从高到低的第${rhoDriverRank}名的师傅分数作为晋级分数`;
+            
+            // 生成案例数据表
+            generateCaseTable(n, d, rho);
+            
+            document.getElementById('resultSection').style.display = 'block';
+        });
+        
+        // 生成案例数据表
+        function generateCaseTable(n, d, rho) {
+            const caseTableBody = document.getElementById('caseTableBody');
+            caseTableBody.innerHTML = '';
+            
+            // 定义不同的晋级比例
+            const proportions = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5];
+            
+            proportions.forEach(p => {
+                // 计算短板阈值（独立假设）
+                const T_independent = d === 1 ? p : 1 - Math.pow(p, 1/d);
+                // 计算短板阈值（正相关假设）
+                const T_correlated = p;
+                // 计算相关性系数下的比例q
+                const q = (1 - rho) * Math.pow(p, 1/d) + rho * p;
+                // 计算相关性系数下的短板阈值
+                const T_rho = 1 - q;
+                // 计算独立假设晋级分数线排名
+                const maxDriverRank = Math.ceil((d === 1 ? p : Math.pow(p, 1/d)) * n);
+                // 计算正相关假设晋级分数线排名
+                const minDriverRank = Math.ceil(p * n);
+                // 计算相关性系数晋级分数线排名
+                const rhoDriverRank = Math.ceil(q * n);
+                
+                // 创建表格行
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="border: 1px solid #ddd; padding: 8px;">${(p * 100).toFixed(0)}%</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${T_independent.toFixed(4)}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${T_correlated.toFixed(4)}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${T_rho.toFixed(4)}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">第${maxDriverRank}名</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">第${minDriverRank}名</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">第${rhoDriverRank}名</td>
+                `;
+                caseTableBody.appendChild(row);
+            });
+        }
+        
+        // 生成模拟数据
+        document.getElementById('generateDataBtn').addEventListener('click', function() {
+            // 生成随机的参与排名师傅数（50-100之间）
+            const randomN = Math.floor(Math.random() * 51) + 50;
+            // 生成随机的晋级目标比例（10%-30%之间）
+            const randomP = Math.round((Math.random() * 0.2 + 0.1) * 100) / 100;
+            // 生成随机的考核维度数（1-5之间）
+            const randomD = Math.floor(Math.random() * 5) + 1;
+            // 生成随机的相关性系数（0-1之间）
+            const randomRho = Math.round(Math.random() * 100) / 100;
+            
+            // 填充到输入框
+            document.getElementById('n').value = randomN;
+            document.getElementById('p').value = randomP;
+            document.getElementById('d').value = randomD;
+            document.getElementById('rho').value = randomRho;
+        });
+    </script>
+</body>
+</html>
